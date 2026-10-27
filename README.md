@@ -1,32 +1,73 @@
 # Jigsaw Puzzle Builder
 
-A lightweight browser-based jigsaw puzzle app that lets you:
-
-- Upload any image
-- Choose puzzle dimensions from the available options
-- Drag and drop tiles to rebuild the image
-- Copy a shareable solve link for the current puzzle when the app is publicly hosted
-- See a completion pop-up when the picture is fully solved
+A browser-based jigsaw app that lets you upload an image, choose puzzle dimensions, and share a short link. Opening a shared link shows only the puzzle board, so players can solve it without the upload and creator controls.
 
 ## Run locally
 
-Open `index.html` directly in a browser, or serve the folder locally. Locally created links are not shareable with other people.
+Open `index.html` directly or serve the project folder locally. Puzzle sharing requires the app to be hosted publicly and connected to Supabase.
 
-```bash
-cd "C:\Users\jithu\.vscode\Jigsaw_Puzzler"
-python -m http.server 8000
-```
+## Configure puzzle storage
 
-Then visit http://localhost:8000
+Shared puzzles and optimized image files are stored in Supabase. Images are resized to at most 1400 pixels on the longest edge, converted to WebP, and limited to 2 MB. Anyone with a puzzle link can read its image and play it.
 
-## Publish and share
+1. Create a Supabase project.
+2. In the Supabase SQL Editor, run:
 
-The app is static and includes a GitHub Actions workflow for publishing this branch with GitHub Pages:
+   ```sql
+   create table if not exists public.puzzles (
+     id uuid primary key,
+     rows integer not null check (rows between 2 and 6),
+     cols integer not null check (cols between 2 and 6),
+     pieces integer[] not null,
+     image_path text not null,
+     created_at timestamptz not null default now()
+   );
 
-1. In the repository, open **Settings → Pages**.
-2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
-3. Push a change to the `feature/jigsaw-puzzler` branch, or manually run **Deploy to GitHub Pages** from the **Actions** tab.
-4. Wait for the workflow to complete, then open the deployed URL shown in the workflow run's `github-pages` environment.
-5. Create a puzzle on that public page and copy the solve link.
+   alter table public.puzzles enable row level security;
+   grant select, insert on public.puzzles to anon;
 
-The solve link includes the image and puzzle state in its URL fragment. This means no image is uploaded to a server, but links can become very long for large images and may not work in services that truncate long URLs. Anyone with the link can see and play that puzzle.
+   drop policy if exists "Anyone can read shared puzzles" on public.puzzles;
+   create policy "Anyone can read shared puzzles"
+     on public.puzzles for select to anon using (true);
+
+   drop policy if exists "Anyone can create shared puzzles" on public.puzzles;
+   create policy "Anyone can create shared puzzles"
+     on public.puzzles for insert to anon with check (
+       rows between 2 and 6 and
+       cols between 2 and 6 and
+       cardinality(pieces) = rows * cols
+     );
+
+   insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+   values ('puzzles', 'puzzles', true, 2097152, array['image/webp'])
+   on conflict (id) do update set
+     public = excluded.public,
+     file_size_limit = excluded.file_size_limit,
+     allowed_mime_types = excluded.allowed_mime_types;
+
+   drop policy if exists "Anyone can upload puzzle images" on storage.objects;
+   create policy "Anyone can upload puzzle images"
+     on storage.objects for insert to anon
+     with check (bucket_id = 'puzzles');
+   ```
+
+3. In the Supabase project settings, copy the **Project URL** and the **anon/public key**.
+4. Put those values in `config.js`:
+
+   ```js
+   window.JIGSAW_CONFIG = {
+     supabaseUrl: "https://YOUR_PROJECT_ID.supabase.co",
+     supabaseAnonKey: "YOUR_SUPABASE_ANON_KEY",
+   };
+   ```
+
+   The anon/public key is intended for browser use. Never put a Supabase `service_role` key in this app or commit it.
+5. Commit and push `config.js` to `feature/jigsaw-puzzler`. The existing GitHub Pages workflow will publish the changes.
+
+To share: open the public GitHub Pages site, upload an image, choose the rows and columns, and select **Create puzzle**. Copy the generated short link. The image is uploaded to the public `puzzles` bucket; do not use confidential images.
+
+Because puzzle creation is public and does not require player accounts, the Supabase anon key must only be used with the policies above. For a widely used app, add server-side abuse prevention and rate limits.
+
+## GitHub Pages
+
+The `.github/workflows/pages.yml` workflow deploys pushes to `feature/jigsaw-puzzler`. GitHub Pages must use **GitHub Actions** as its publishing source.

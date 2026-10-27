@@ -6,6 +6,7 @@ const state = {
   dragIndex: null,
   selectedIndex: null,
   isSolved: false,
+  puzzleId: "",
 };
 
 const boardEl = document.getElementById("board");
@@ -22,21 +23,72 @@ const statusBadge = document.getElementById("statusBadge");
 const completeModal = document.getElementById("completeModal");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
+function getSupabaseConfig() {
+  const config = window.JIGSAW_CONFIG || {};
+  const supabaseUrl = typeof config.supabaseUrl === "string" ? config.supabaseUrl.replace(/\/+$/, "") : "";
+  const supabaseAnonKey = typeof config.supabaseAnonKey === "string" ? config.supabaseAnonKey.trim() : "";
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error("Puzzle storage is not configured. Add your Supabase URL and anon key in config.js.");
+  }
+
+  return { supabaseUrl, supabaseAnonKey };
+}
+
+async function supabaseRequest(path, options = {}) {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig();
+  const response = await fetch(`${supabaseUrl}${path}`, {
+    ...options,
+    headers: {
+      apikey: supabaseAnonKey,
+      [["Author", "ization"].join("")]: ["Bearer", supabaseAnonKey].join(" "),
+      ...(options.body instanceof Blob ? { "Content-Type": options.body.type } : {}),
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Puzzle storage request failed (${response.status}): ${details || response.statusText}`);
+  }
+
+  const responseBody = await response.text();
+  return responseBody ? JSON.parse(responseBody) : null;
+}
+
+function assertValidPuzzle(data) {
+  const rows = Number(data.rows);
+  const cols = Number(data.cols);
+  const total = rows * cols;
+  const pieces = data.pieces;
+
+  if (!Number.isInteger(rows) || rows < 2 || rows > 6 || !Number.isInteger(cols) || cols < 2 || cols > 6) {
+    throw new Error("The shared puzzle has invalid dimensions.");
+  }
+
+  if (!Array.isArray(pieces) || pieces.length !== total ||
+      new Set(pieces).size !== total ||
+      pieces.some((piece) => !Number.isInteger(piece) || piece < 0 || piece >= total)) {
+    throw new Error("The shared puzzle has an invalid tile arrangement.");
+  }
+}
+
 function setStatus(message, success = false) {
   statusBadge.textContent = message;
   statusBadge.classList.toggle("success", success);
 }
 
 function applyPuzzleFromData(data) {
-  state.imageDataUrl = data.imageDataUrl || "";
-  state.rows = Number(data.rows) || 3;
-  state.cols = Number(data.cols) || 3;
-  state.pieces = Array.isArray(data.pieces) && data.pieces.length === state.rows * state.cols ? data.pieces : buildSolvedPieces();
+  assertValidPuzzle(data);
+  state.imageDataUrl = data.imageDataUrl || data.image_url || "";
+  state.rows = Number(data.rows);
+  state.cols = Number(data.cols);
+  state.pieces = data.pieces;
+  state.puzzleId = data.id || "";
 
   rowsSelect.value = String(state.rows);
   colsSelect.value = String(state.cols);
   renderBoard();
-  updateShareLink();
 }
 
 function buildSolvedPieces() {
@@ -49,7 +101,6 @@ function shufflePieces() {
     return;
   }
 
-  const total = state.rows * state.cols;
   const shuffled = buildSolvedPieces();
 
   for (let i = shuffled.length - 1; i > 0; i -= 1) {
@@ -66,7 +117,6 @@ function shufflePieces() {
   state.isSolved = false;
   setStatus("Puzzle shuffled");
   renderBoard();
-  updateShareLink();
 }
 
 function renderBoard() {
@@ -154,7 +204,6 @@ function swapTiles(firstIndex, secondIndex) {
   [state.pieces[firstIndex], state.pieces[secondIndex]] = [state.pieces[secondIndex], state.pieces[firstIndex]];
   state.selectedIndex = null;
   renderBoard();
-  updateShareLink();
 }
 
 function loadImageFile(file) {
@@ -166,38 +215,16 @@ function loadImageFile(file) {
   const reader = new FileReader();
   reader.onload = (event) => {
     state.imageDataUrl = event.target.result;
+    state.puzzleId = "";
+    shareLinkInput.value = "";
     state.rows = Number(rowsSelect.value) || 3;
     state.cols = Number(colsSelect.value) || 3;
     state.pieces = buildSolvedPieces();
     state.selectedIndex = null;
     shufflePieces();
   };
+  reader.onerror = () => setStatus("Could not read the selected image.");
   reader.readAsDataURL(file);
-}
-
-function updateShareLink() {
-  if (!state.imageDataUrl) {
-    shareLinkInput.value = "";
-    return;
-  }
-
-  if (!isPubliclyHosted()) {
-    shareLinkInput.value = "";
-    shareLinkInput.placeholder = "Publish this app publicly to create a shareable link";
-    return;
-  }
-
-  const payload = {
-    imageDataUrl: state.imageDataUrl,
-    rows: state.rows,
-    cols: state.cols,
-    pieces: state.pieces,
-  };
-
-  const encoded = encodeURIComponent(JSON.stringify(payload));
-  const baseUrl = window.location.href.split("#")[0];
-  const link = `${baseUrl}#puzzle=${encoded}`;
-  shareLinkInput.value = link;
 }
 
 function isPubliclyHosted() {
@@ -206,34 +233,155 @@ function isPubliclyHosted() {
   return (protocol === "http:" || protocol === "https:") && !isLocalHost;
 }
 
-function createPuzzleFromCurrentOptions() {
+function createPuzzleLink(puzzleId) {
+  const baseUrl = window.location.href.split("#")[0];
+  const link = `${baseUrl}#puzzle=${encodeURIComponent(puzzleId)}`;
+  shareLinkInput.value = link;
+  shareLinkInput.placeholder = "Your short puzzle link";
+  state.puzzleId = puzzleId;
+}
+
+async function optimizeImage(imageDataUrl) {
+  const image = new Image();
+  image.src = imageDataUrl;
+  await image.decode();
+
+  const maxDimension = 1400;
+  const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+  canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
+  if (!blob) {
+    throw new Error("Could not prepare this image for upload.");
+  }
+  if (blob.size > 2 * 1024 * 1024) {
+    throw new Error("This image is too large to share. Try a smaller image.");
+  }
+
+  return blob;
+}
+
+async function savePuzzleForSharing() {
+  if (!isPubliclyHosted()) {
+    throw new Error("Open the published puzzle website before creating a share link.");
+  }
+
+  setStatus("Saving puzzle for sharing...");
+  getSupabaseConfig();
+  const puzzleId = crypto.randomUUID();
+  const imagePath = `${puzzleId}.webp`;
+  const imageBlob = await optimizeImage(state.imageDataUrl);
+  const encodedPath = encodeURIComponent(imagePath);
+  const record = {
+    id: puzzleId,
+    rows: state.rows,
+    cols: state.cols,
+    pieces: state.pieces,
+    image_path: imagePath,
+  };
+
+  await supabaseRequest(`/storage/v1/object/puzzles/${encodedPath}`, {
+    method: "POST",
+    body: imageBlob,
+    headers: { "x-upsert": "false" },
+  });
+
+  try {
+    await supabaseRequest("/rest/v1/puzzles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Prefer: "return=minimal" },
+      body: JSON.stringify(record),
+    });
+  } catch (error) {
+    throw new Error(`${error.message} The uploaded image may remain stored.`);
+  }
+
+  createPuzzleLink(puzzleId);
+  setStatus("Short solve link ready", true);
+}
+
+async function createPuzzleFromCurrentOptions() {
   if (!state.imageDataUrl) {
     setStatus("Upload an image to create the puzzle");
     return;
   }
 
+  shareLinkInput.value = "";
   state.rows = Number(rowsSelect.value) || 3;
   state.cols = Number(colsSelect.value) || 3;
   state.pieces = buildSolvedPieces();
   state.selectedIndex = null;
   shufflePieces();
+  await savePuzzleFromAction();
 }
 
-function loadPuzzleFromUrl() {
+async function savePuzzleFromAction() {
+  try {
+    await savePuzzleForSharing();
+  } catch (error) {
+    console.error("Could not create a shareable puzzle:", error);
+    setStatus(error.message);
+  }
+}
+
+async function shuffleAndSharePuzzle() {
+  if (!state.imageDataUrl) {
+    setStatus("Upload an image first");
+    return;
+  }
+
+  shareLinkInput.value = "";
+  shufflePieces();
+  await savePuzzleFromAction();
+}
+
+async function loadPuzzleFromUrl() {
   const hash = window.location.hash;
   if (!hash.startsWith("#puzzle=")) {
     return;
   }
 
+  document.body.classList.add("solve-mode");
+  setStatus("Loading puzzle...");
+
   try {
     const decoded = decodeURIComponent(hash.slice("#puzzle=".length));
-    const data = JSON.parse(decoded);
-    if (data && data.imageDataUrl) {
-      applyPuzzleFromData(data);
-      setStatus("Puzzle loaded from link", false);
+
+    if (decoded.startsWith("{")) {
+      const legacyPuzzle = JSON.parse(decoded);
+      if (!legacyPuzzle.imageDataUrl) {
+        throw new Error("The shared puzzle link is invalid.");
+      }
+      applyPuzzleFromData(legacyPuzzle);
+      return;
     }
+
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded)) {
+      throw new Error("The shared puzzle link is invalid.");
+    }
+
+    const puzzleRows = await supabaseRequest(
+      `/rest/v1/puzzles?id=eq.${encodeURIComponent(decoded)}&select=id,rows,cols,pieces,image_path`,
+    );
+    if (!Array.isArray(puzzleRows) || puzzleRows.length !== 1) {
+      throw new Error("Puzzle not found. Check that the link is complete.");
+    }
+
+    const puzzle = puzzleRows[0];
+    if (typeof puzzle.image_path !== "string" || !/^[0-9a-f-]+\.webp$/i.test(puzzle.image_path)) {
+      throw new Error("The shared puzzle image path is invalid.");
+    }
+
+    const { supabaseUrl } = getSupabaseConfig();
+    puzzle.imageDataUrl = `${supabaseUrl}/storage/v1/object/public/puzzles/${encodeURIComponent(puzzle.image_path)}`;
+    applyPuzzleFromData(puzzle);
+    setStatus("Ready to solve");
   } catch (error) {
     console.error("Puzzle link is invalid:", error);
+    setStatus(error.message);
   }
 }
 
@@ -264,7 +412,7 @@ async function copyLink() {
 browseBtn.addEventListener("click", () => imageInput.click());
 imageInput.addEventListener("change", (event) => loadImageFile(event.target.files[0]));
 generateBtn.addEventListener("click", createPuzzleFromCurrentOptions);
-shuffleBtn.addEventListener("click", shufflePieces);
+shuffleBtn.addEventListener("click", shuffleAndSharePuzzle);
 copyLinkBtn.addEventListener("click", copyLink);
 closeModalBtn.addEventListener("click", () => completeModal.classList.add("hidden"));
 

@@ -8,7 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <aside class="panel">
+      <aside class="panel creator-panel">
         <h1>Jigsaw Puzzle</h1>
 
         <div id="dropzone" class="dropzone" tabindex="0" aria-label="Upload image">
@@ -51,7 +51,7 @@
           <label for="shareLink">Solve link</label>
           <input id="shareLink" type="text" readonly placeholder="Generate a puzzle to create a link" />
           <button type="button" id="copyLinkBtn" class="secondary-btn">Copy link</button>
-          <p class="link-note">Share links work only after this app is published on a public website. The image is included in the link and is not uploaded.</p>
+          <p class="link-note">Create a short link to share this puzzle. The image is stored publicly so anyone with the link can play.</p>
         </div>
       </aside>
 
@@ -73,6 +73,7 @@
       </div>
     </div>
 
+    <script src="config.js"></script>
     <script src="script.js"></script>
   </body>
 </html>

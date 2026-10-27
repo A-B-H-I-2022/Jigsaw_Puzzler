@@ -38,6 +38,24 @@ input {
   align-items: start;
 }
 
+body.solve-mode .app-shell {
+  width: min(1100px, calc(100% - 32px));
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.solve-mode .creator-panel {
+  display: none;
+}
+
+body.solve-mode .board-section {
+  min-height: calc(100vh - 64px);
+}
+
+body.solve-mode .board {
+  width: min(900px, 100%);
+  min-height: min(75vh, 900px);
+}
+
 .panel,
 .board-section {
   background: rgba(17, 24, 39, 0.92);
@@ -263,5 +281,15 @@ button:hover {
 
   .board {
     min-height: 380px;
+  }
+
+  body.solve-mode .app-shell {
+    width: calc(100% - 16px);
+    margin: 8px auto;
+  }
+
+  body.solve-mode .board-section {
+    min-height: calc(100vh - 16px);
+    padding: 12px;
   }
 }
