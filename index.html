@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jigsaw Puzzle Builder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="panel">
+        <h1>Jigsaw Puzzle</h1>
+
+        <div id="dropzone" class="dropzone" tabindex="0" aria-label="Upload image">
+          <input id="imageInput" type="file" accept="image/*" hidden />
+          <p><strong>Drag & drop</strong> an image here</p>
+          <p>or</p>
+          <button type="button" id="browseBtn" class="secondary-btn">Choose image</button>
+        </div>
+
+        <div class="controls">
+          <div class="field-group">
+            <label for="rowsSelect">Rows</label>
+            <select id="rowsSelect">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="colsSelect">Columns</label>
+            <select id="colsSelect">
+              <option value="2">2</option>
+              <option value="3" selected>3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button type="button" id="generateBtn" class="primary-btn">Create puzzle</button>
+          <button type="button" id="shuffleBtn" class="ghost-btn">Shuffle</button>
+        </div>
+
+        <div class="link-box">
+          <label for="shareLink">Solve link</label>
+          <input id="shareLink" type="text" readonly placeholder="Generate a puzzle to create a link" />
+          <button type="button" id="copyLinkBtn" class="secondary-btn">Copy link</button>
+          <p class="link-note">Share links work only after this app is published on a public website. The image is included in the link and is not uploaded.</p>
+        </div>
+      </aside>
+
+      <main class="board-section">
+        <div class="board-header">
+          <h2>Puzzle board</h2>
+          <span id="statusBadge" class="status-badge">Waiting for image</span>
+        </div>
+
+        <div id="board" class="board" aria-live="polite"></div>
+      </main>
+    </div>
+
+    <div id="completeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-card">
+        <h3 id="modalTitle">Puzzle complete!</h3>
+        <p>You solved the image.</p>
+        <button type="button" id="closeModalBtn" class="primary-btn">Close</button>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
