@@ -3,8 +3,7 @@ const state = {
   rows: 3,
   cols: 3,
   pieces: [],
-  dragIndex: null,
-  selectedIndex: null,
+  drag: null,
   isSolved: false,
   puzzleId: "",
 };
@@ -140,47 +139,6 @@ function renderBoard() {
     tile.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
     tile.style.backgroundPosition = `${xOffset}% ${yOffset}%`;
 
-    if (state.selectedIndex === index) {
-      tile.classList.add("selected");
-    }
-
-    tile.addEventListener("dragstart", (event) => {
-      state.dragIndex = index;
-      event.dataTransfer.setData("text/plain", String(index));
-      event.dataTransfer.effectAllowed = "move";
-      tile.classList.add("dragging");
-    });
-
-    tile.addEventListener("dragend", () => {
-      tile.classList.remove("dragging");
-      state.dragIndex = null;
-    });
-
-    tile.addEventListener("dragover", (event) => {
-      event.preventDefault();
-    });
-
-    tile.addEventListener("drop", (event) => {
-      event.preventDefault();
-      const sourceIndex = Number(event.dataTransfer.getData("text/plain"));
-      const targetIndex = index;
-      if (Number.isInteger(sourceIndex) && sourceIndex !== targetIndex) {
-        swapTiles(sourceIndex, targetIndex);
-      }
-    });
-
-    tile.addEventListener("click", () => {
-      if (state.selectedIndex === null) {
-        state.selectedIndex = index;
-      } else if (state.selectedIndex === index) {
-        state.selectedIndex = null;
-      } else {
-        swapTiles(state.selectedIndex, index);
-        state.selectedIndex = null;
-      }
-      renderBoard();
-    });
-
     boardEl.appendChild(tile);
   }
 
@@ -202,9 +160,89 @@ function swapTiles(firstIndex, secondIndex) {
   }
 
   [state.pieces[firstIndex], state.pieces[secondIndex]] = [state.pieces[secondIndex], state.pieces[firstIndex]];
-  state.selectedIndex = null;
   renderBoard();
 }
+
+function getTileFromTarget(target) {
+  return target instanceof Element ? target.closest(".tile") : null;
+}
+
+function clearTileDrag() {
+  if (!state.drag) {
+    return;
+  }
+
+  state.drag.tile.classList.remove("dragging");
+  state.drag.tile.style.transform = "";
+  state.drag = null;
+}
+
+boardEl.addEventListener("pointerdown", (event) => {
+  if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) {
+    return;
+  }
+
+  const tile = getTileFromTarget(event.target);
+  if (!tile) {
+    return;
+  }
+
+  event.preventDefault();
+  tile.setPointerCapture(event.pointerId);
+  state.drag = {
+    pointerId: event.pointerId,
+    tile,
+    index: Number(tile.dataset.index),
+    startX: event.clientX,
+    startY: event.clientY,
+    dragging: false,
+  };
+});
+
+boardEl.addEventListener("pointermove", (event) => {
+  const drag = state.drag;
+  if (!drag || drag.pointerId !== event.pointerId) {
+    return;
+  }
+
+  const deltaX = event.clientX - drag.startX;
+  const deltaY = event.clientY - drag.startY;
+  if (!drag.dragging && Math.hypot(deltaX, deltaY) < 5) {
+    return;
+  }
+
+  drag.dragging = true;
+  drag.tile.classList.add("dragging");
+  drag.tile.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04)`;
+  setStatus("Drop onto another piece to swap");
+});
+
+function finishTileDrag(event) {
+  const drag = state.drag;
+  if (!drag || drag.pointerId !== event.pointerId) {
+    return;
+  }
+
+  let targetTile = null;
+  if (drag.dragging) {
+    targetTile = document.elementsFromPoint(event.clientX, event.clientY)
+      .map(getTileFromTarget)
+      .find((tile) => tile && tile !== drag.tile);
+  }
+
+  const targetIndex = targetTile ? Number(targetTile.dataset.index) : -1;
+  const sourceIndex = drag.index;
+  clearTileDrag();
+
+  if (targetIndex >= 0) {
+    swapTiles(sourceIndex, targetIndex);
+  } else {
+    setStatus(state.imageDataUrl ? "Ready to solve" : "Waiting for image");
+  }
+}
+
+boardEl.addEventListener("pointerup", finishTileDrag);
+boardEl.addEventListener("pointercancel", clearTileDrag);
 
 function loadImageFile(file) {
   if (!file || !file.type.startsWith("image/")) {
@@ -220,7 +258,6 @@ function loadImageFile(file) {
     state.rows = Number(rowsSelect.value) || 3;
     state.cols = Number(colsSelect.value) || 3;
     state.pieces = buildSolvedPieces();
-    state.selectedIndex = null;
     shufflePieces();
   };
   reader.onerror = () => setStatus("Could not read the selected image.");
@@ -313,7 +350,6 @@ async function createPuzzleFromCurrentOptions() {
   state.rows = Number(rowsSelect.value) || 3;
   state.cols = Number(colsSelect.value) || 3;
   state.pieces = buildSolvedPieces();
-  state.selectedIndex = null;
   shufflePieces();
   await savePuzzleFromAction();
 }

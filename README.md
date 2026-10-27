@@ -1,6 +1,6 @@
 # Jigsaw Puzzle Builder
 
-A browser-based jigsaw app that lets you upload an image, choose puzzle dimensions, and share a short link. Opening a shared link shows only the puzzle board, so players can solve it without the upload and creator controls.
+A browser-based jigsaw app that lets you upload an image, choose puzzle dimensions, and share a short link. Drag and drop pieces onto each other to swap them. Opening a shared link shows only the puzzle board, so players can solve it without the upload and creator controls.
 
 ## Run locally
 
