@@ -21,11 +21,12 @@ Then visit http://localhost:8000
 
 ## Publish and share
 
-The app is static and can be published with GitHub Pages:
+The app is static and includes a GitHub Actions workflow for publishing this branch with GitHub Pages:
 
-1. Create a GitHub repository for this project and add these files.
-2. In the repository, open **Settings → Pages**.
-3. Under **Build and deployment**, choose **Deploy from a branch**, select the `main` branch and `/ (root)`, then save.
-4. Once GitHub Pages publishes the site, open its public URL, create a puzzle, and copy the solve link.
+1. In the repository, open **Settings → Pages**.
+2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
+3. Push a change to the `feature/jigsaw-puzzler` branch, or manually run **Deploy to GitHub Pages** from the **Actions** tab.
+4. Wait for the workflow to complete, then open the deployed URL shown in the workflow run's `github-pages` environment.
+5. Create a puzzle on that public page and copy the solve link.
 
 The solve link includes the image and puzzle state in its URL fragment. This means no image is uploaded to a server, but links can become very long for large images and may not work in services that truncate long URLs. Anyone with the link can see and play that puzzle.
