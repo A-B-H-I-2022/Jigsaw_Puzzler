@@ -19,6 +19,8 @@ const shuffleBtn = document.getElementById("shuffleBtn");
 const copyLinkBtn = document.getElementById("copyLinkBtn");
 const shareLinkInput = document.getElementById("shareLink");
 const statusBadge = document.getElementById("statusBadge");
+const imageReference = document.getElementById("imageReference");
+const referenceImage = document.getElementById("referenceImage");
 const completeModal = document.getElementById("completeModal");
 const closeModalBtn = document.getElementById("closeModalBtn");
 
@@ -87,7 +89,13 @@ function applyPuzzleFromData(data) {
 
   rowsSelect.value = String(state.rows);
   colsSelect.value = String(state.cols);
+  showImageReference(state.imageDataUrl);
   renderBoard();
+}
+
+function showImageReference(imageUrl) {
+  referenceImage.src = imageUrl;
+  imageReference.classList.toggle("hidden", !imageUrl);
 }
 
 function buildSolvedPieces() {
@@ -253,6 +261,7 @@ function loadImageFile(file) {
   const reader = new FileReader();
   reader.onload = (event) => {
     state.imageDataUrl = event.target.result;
+    showImageReference(state.imageDataUrl);
     state.puzzleId = "";
     shareLinkInput.value = "";
     state.rows = Number(rowsSelect.value) || 3;

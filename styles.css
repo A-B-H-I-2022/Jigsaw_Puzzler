@@ -221,6 +221,34 @@ button:hover {
   align-content: start;
 }
 
+.image-reference {
+  width: min(700px, 100%);
+  margin: 20px auto 0;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.24);
+}
+
+.image-reference.hidden {
+  display: none;
+}
+
+.image-reference figcaption {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.image-reference img {
+  display: block;
+  width: min(100%, 360px);
+  max-height: 260px;
+  margin: 0 auto;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
 .tile {
   position: relative;
   aspect-ratio: 1;
