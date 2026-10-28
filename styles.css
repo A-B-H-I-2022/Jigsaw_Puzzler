@@ -249,32 +249,51 @@ button:hover {
   border-radius: 8px;
 }
 
-.tile {
+.piece {
   position: relative;
   aspect-ratio: 1;
-  border-radius: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.1);
-  background-repeat: no-repeat;
-  background-size: 300% 300%;
-  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.2);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   cursor: grab;
   touch-action: none;
   user-select: none;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  overflow: visible;
 }
 
-.tile:hover {
-  transform: scale(1.02);
-  border-color: rgba(125, 211, 252, 0.9);
+.piece svg {
+  position: absolute;
+  top: -24%;
+  left: -24%;
+  width: 148%;
+  height: 148%;
+  overflow: visible;
+  pointer-events: none;
 }
 
-.tile.dragging {
-  z-index: 1;
+.piece-outline {
+  fill: none;
+  stroke: rgba(226, 242, 255, 0.72);
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.piece:hover {
+  z-index: 2;
+  transform: none;
+}
+
+.piece.dragging {
+  z-index: 3;
   opacity: 0.9;
   cursor: grabbing;
-  box-shadow: 0 12px 22px rgba(2, 6, 23, 0.45);
-  transition: none;
   pointer-events: none;
+}
+
+.piece.dragging svg {
+  filter: drop-shadow(0 12px 12px rgba(2, 6, 23, 0.45));
 }
 
 .modal {
