@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/jigsaw-puzzler
+      - feature_Classic_jigsaw_pieces
   workflow_dispatch:
 
 permissions:
