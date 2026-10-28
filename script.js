@@ -63,7 +63,7 @@ function assertValidPuzzle(data) {
   const total = rows * cols;
   const pieces = data.pieces;
 
-  if (!Number.isInteger(rows) || rows < 2 || rows > 6 || !Number.isInteger(cols) || cols < 2 || cols > 6) {
+  if (!Number.isInteger(rows) || rows < 2 || rows > 10 || !Number.isInteger(cols) || cols < 2 || cols > 10) {
     throw new Error("The shared puzzle has invalid dimensions.");
   }
 
@@ -128,7 +128,7 @@ function shufflePieces() {
 
 function renderBoard() {
   boardEl.innerHTML = "";
-  boardEl.style.gridTemplateColumns = `repeat(${state.cols}, minmax(70px, 1fr))`;
+  boardEl.style.gridTemplateColumns = `repeat(${state.cols}, minmax(0, 1fr))`;
 
   for (let index = 0; index < state.pieces.length; index += 1) {
     const pieceNumber = state.pieces[index];

@@ -16,12 +16,17 @@ Shared puzzles and optimized image files are stored in Supabase. Images are resi
    ```sql
    create table if not exists public.puzzles (
      id uuid primary key,
-     rows integer not null check (rows between 2 and 6),
-     cols integer not null check (cols between 2 and 6),
+     rows integer not null check (rows between 2 and 10),
+     cols integer not null check (cols between 2 and 10),
      pieces integer[] not null,
      image_path text not null,
      created_at timestamptz not null default now()
    );
+
+   alter table public.puzzles drop constraint if exists puzzles_rows_check;
+   alter table public.puzzles add constraint puzzles_rows_check check (rows between 2 and 10);
+   alter table public.puzzles drop constraint if exists puzzles_cols_check;
+   alter table public.puzzles add constraint puzzles_cols_check check (cols between 2 and 10);
 
    alter table public.puzzles enable row level security;
    grant select, insert on public.puzzles to anon;
@@ -33,8 +38,8 @@ Shared puzzles and optimized image files are stored in Supabase. Images are resi
    drop policy if exists "Anyone can create shared puzzles" on public.puzzles;
    create policy "Anyone can create shared puzzles"
      on public.puzzles for insert to anon with check (
-       rows between 2 and 6 and
-       cols between 2 and 6 and
+       rows between 2 and 10 and
+       cols between 2 and 10 and
        cardinality(pieces) = rows * cols
      );
 
