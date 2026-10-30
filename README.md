@@ -1,6 +1,6 @@
 # Jigsaw Puzzle Builder
 
-A browser-based jigsaw app that lets you upload an image, choose puzzle dimensions, and share a short link. Pieces have interlocking jigsaw edges; drag one onto another to swap their positions and snap them into the board. The original image appears below the puzzle as a reference. Opening a shared link shows only the puzzle board and reference image, so players can solve it without the upload and creator controls.
+A browser-based jigsaw app that lets you upload an image, choose puzzle dimensions, and share a short link. Drag and drop pieces onto each other to swap them. The original image appears below the puzzle as a reference. Opening a shared link shows only the puzzle board and reference image, so players can solve it without the upload and creator controls.
 
 ## Run locally
 
@@ -9,8 +9,6 @@ Open `index.html` directly or serve the project folder locally. Puzzle sharing r
 ## Configure puzzle storage
 
 Shared puzzles and optimized image files are stored in Supabase. Images are resized to at most 1400 pixels on the longest edge, converted to WebP, and limited to 2 MB. Anyone with a puzzle link can read its image and play it.
-
-Jigsaw piece shapes are generated in the browser from the existing rows, columns, and piece arrangement. This feature does not require a Supabase schema or policy change.
 
 1. Create a Supabase project.
 2. In the Supabase SQL Editor, run:

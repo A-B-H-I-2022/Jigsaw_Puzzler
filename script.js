@@ -132,16 +132,22 @@ function renderBoard() {
 
   for (let index = 0; index < state.pieces.length; index += 1) {
     const pieceNumber = state.pieces[index];
-    const piece = document.createElement("button");
-    piece.type = "button";
-    piece.className = "piece";
-    piece.dataset.index = String(index);
-    piece.setAttribute("aria-label", `Puzzle piece ${index + 1}`);
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = "tile";
+    tile.dataset.index = String(index);
+    tile.setAttribute("aria-label", `Puzzle tile ${index + 1}`);
 
     const row = Math.floor(pieceNumber / state.cols);
     const col = pieceNumber % state.cols;
-    piece.appendChild(createPieceGraphic(row, col, index));
-    boardEl.appendChild(piece);
+    const xOffset = state.cols > 1 ? (col / (state.cols - 1)) * 100 : 0;
+    const yOffset = state.rows > 1 ? (row / (state.rows - 1)) * 100 : 0;
+
+    tile.style.backgroundImage = `url("${state.imageDataUrl}")`;
+    tile.style.backgroundSize = `${state.cols * 100}% ${state.rows * 100}%`;
+    tile.style.backgroundPosition = `${xOffset}% ${yOffset}%`;
+
+    boardEl.appendChild(tile);
   }
 
   const solved = state.pieces.every((value, index) => value === index);
@@ -156,103 +162,7 @@ function renderBoard() {
   }
 }
 
-function getHorizontalEdgeDirection(boundaryRow, col) {
-  return (boundaryRow * 7 + col * 3) % 2 === 0 ? 1 : -1;
-}
-
-function getVerticalEdgeDirection(row, boundaryCol) {
-  return (row * 5 + boundaryCol * 11) % 2 === 0 ? 1 : -1;
-}
-
-function getPieceEdgeTab(row, col, side) {
-  if (side === "top") {
-    return row === 0 ? 0 : getHorizontalEdgeDirection(row, col);
-  }
-  if (side === "right") {
-    return col === state.cols - 1 ? 0 : getVerticalEdgeDirection(row, col + 1);
-  }
-  if (side === "bottom") {
-    return row === state.rows - 1 ? 0 : getHorizontalEdgeDirection(row + 1, col);
-  }
-  return col === 0 ? 0 : getVerticalEdgeDirection(row, col);
-}
-
-function horizontalPieceEdge(startX, y, step, tabDirection) {
-  const tabOffset = tabDirection * 16;
-  const x = (offset) => startX + step * offset;
-  return [
-    `L ${x(35)} ${y}`,
-    `C ${x(35)} ${y + tabOffset * 0.8} ${x(38)} ${y + tabOffset} ${x(42)} ${y + tabOffset}`,
-    `C ${x(42)} ${y + tabOffset * 1.35} ${x(58)} ${y + tabOffset * 1.35} ${x(58)} ${y + tabOffset}`,
-    `C ${x(62)} ${y + tabOffset} ${x(65)} ${y + tabOffset * 0.8} ${x(65)} ${y}`,
-    `L ${x(100)} ${y}`,
-  ].join(" ");
-}
-
-function verticalPieceEdge(x, startY, step, tabDirection) {
-  const tabOffset = tabDirection * 16;
-  const y = (offset) => startY + step * offset;
-  return [
-    `L ${x} ${y(35)}`,
-    `C ${x + tabOffset * 0.8} ${y(35)} ${x + tabOffset} ${y(38)} ${x + tabOffset} ${y(42)}`,
-    `C ${x + tabOffset * 1.35} ${y(42)} ${x + tabOffset * 1.35} ${y(58)} ${x + tabOffset} ${y(58)}`,
-    `C ${x + tabOffset} ${y(62)} ${x + tabOffset * 0.8} ${y(65)} ${x} ${y(65)}`,
-    `L ${x} ${y(100)}`,
-  ].join(" ");
-}
-
-function createPiecePath(row, col) {
-  const inset = 24;
-  const left = inset;
-  const top = inset;
-  const right = inset + 100;
-  const bottom = inset + 100;
-
-  return [
-    `M ${left} ${top}`,
-    horizontalPieceEdge(left, top, 1, getPieceEdgeTab(row, col, "top")),
-    verticalPieceEdge(right, top, 1, getPieceEdgeTab(row, col, "right")),
-    horizontalPieceEdge(right, bottom, -1, getPieceEdgeTab(row, col, "bottom")),
-    verticalPieceEdge(left, bottom, -1, getPieceEdgeTab(row, col, "left")),
-    "Z",
-  ].join(" ");
-}
-
-function createPieceGraphic(row, col, index) {
-  const svgNamespace = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNamespace, "svg");
-  const path = createPiecePath(row, col);
-  const clipId = `piece-clip-${index}`;
-  svg.setAttribute("viewBox", "0 0 148 148");
-  svg.setAttribute("aria-hidden", "true");
-
-  const defs = document.createElementNS(svgNamespace, "defs");
-  const clipPath = document.createElementNS(svgNamespace, "clipPath");
-  clipPath.setAttribute("id", clipId);
-  const clipShape = document.createElementNS(svgNamespace, "path");
-  clipShape.setAttribute("d", path);
-  clipPath.appendChild(clipShape);
-  defs.appendChild(clipPath);
-  svg.appendChild(defs);
-
-  const image = document.createElementNS(svgNamespace, "image");
-  image.setAttribute("x", String(24 - col * 100));
-  image.setAttribute("y", String(24 - row * 100));
-  image.setAttribute("width", String(state.cols * 100));
-  image.setAttribute("height", String(state.rows * 100));
-  image.setAttribute("preserveAspectRatio", "none");
-  image.setAttribute("href", state.imageDataUrl);
-  image.setAttribute("clip-path", `url(#${clipId})`);
-  svg.appendChild(image);
-
-  const outline = document.createElementNS(svgNamespace, "path");
-  outline.setAttribute("d", path);
-  outline.setAttribute("class", "piece-outline");
-  svg.appendChild(outline);
-  return svg;
-}
-
-function swapPieces(firstIndex, secondIndex) {
+function swapTiles(firstIndex, secondIndex) {
   if (firstIndex === secondIndex) {
     return;
   }
@@ -261,17 +171,17 @@ function swapPieces(firstIndex, secondIndex) {
   renderBoard();
 }
 
-function getPieceFromTarget(target) {
-  return target instanceof Element ? target.closest(".piece") : null;
+function getTileFromTarget(target) {
+  return target instanceof Element ? target.closest(".tile") : null;
 }
 
-function clearPieceDrag() {
+function clearTileDrag() {
   if (!state.drag) {
     return;
   }
 
-  state.drag.piece.classList.remove("dragging");
-  state.drag.piece.style.transform = "";
+  state.drag.tile.classList.remove("dragging");
+  state.drag.tile.style.transform = "";
   state.drag = null;
 }
 
@@ -280,17 +190,17 @@ boardEl.addEventListener("pointerdown", (event) => {
     return;
   }
 
-  const piece = getPieceFromTarget(event.target);
-  if (!piece) {
+  const tile = getTileFromTarget(event.target);
+  if (!tile) {
     return;
   }
 
   event.preventDefault();
-  piece.setPointerCapture(event.pointerId);
+  tile.setPointerCapture(event.pointerId);
   state.drag = {
     pointerId: event.pointerId,
-    piece,
-    index: Number(piece.dataset.index),
+    tile,
+    index: Number(tile.dataset.index),
     startX: event.clientX,
     startY: event.clientY,
     dragging: false,
@@ -310,37 +220,37 @@ boardEl.addEventListener("pointermove", (event) => {
   }
 
   drag.dragging = true;
-  drag.piece.classList.add("dragging");
-  drag.piece.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04)`;
-  setStatus("Drop onto another piece to snap it into place");
+  drag.tile.classList.add("dragging");
+  drag.tile.style.transform = `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.04)`;
+  setStatus("Drop onto another piece to swap");
 });
 
-function finishPieceDrag(event) {
+function finishTileDrag(event) {
   const drag = state.drag;
   if (!drag || drag.pointerId !== event.pointerId) {
     return;
   }
 
-  let targetPiece = null;
+  let targetTile = null;
   if (drag.dragging) {
-    targetPiece = document.elementsFromPoint(event.clientX, event.clientY)
-      .map(getPieceFromTarget)
-      .find((piece) => piece && piece !== drag.piece);
+    targetTile = document.elementsFromPoint(event.clientX, event.clientY)
+      .map(getTileFromTarget)
+      .find((tile) => tile && tile !== drag.tile);
   }
 
-  const targetIndex = targetPiece ? Number(targetPiece.dataset.index) : -1;
+  const targetIndex = targetTile ? Number(targetTile.dataset.index) : -1;
   const sourceIndex = drag.index;
-  clearPieceDrag();
+  clearTileDrag();
 
   if (targetIndex >= 0) {
-    swapPieces(sourceIndex, targetIndex);
+    swapTiles(sourceIndex, targetIndex);
   } else {
     setStatus(state.imageDataUrl ? "Ready to solve" : "Waiting for image");
   }
 }
 
-boardEl.addEventListener("pointerup", finishPieceDrag);
-boardEl.addEventListener("pointercancel", clearPieceDrag);
+boardEl.addEventListener("pointerup", finishTileDrag);
+boardEl.addEventListener("pointercancel", clearTileDrag);
 
 function loadImageFile(file) {
   if (!file || !file.type.startsWith("image/")) {
